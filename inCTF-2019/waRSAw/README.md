@@ -1,7 +1,7 @@
 # waRSAw (711 points, 18 solves)
 
 We are given a program encrypt.py and the address of a server running the program.
-Upon connection, the program generates a new RSA key and uses it to encrypt the flag, then sends this and the public modulus back to us. It then presents two options: [1] encrypt and return a client-provided value using the current key, or [2] decrypt a user provided value and return the parity (LSB) of the plaintext.
+Upon connection, the program generates a new RSA key and uses it to encrypt the flag, then sends this and the public modulus back to us. It then presents two options: [1] encrypt and return a client-provided value using the current key, or [2] decrypt a client-provided value and return the parity (LSB) of the plaintext.
 
 
 ```Welcome to RSA encryption oracle!
@@ -17,7 +17,7 @@ Here take your plaintext (in hex):  00
 
 There exists a well-known LSB Oracle attack for RSA, explained in detail [here](https://github.com/ashutosh1206/Crypton/tree/master/RSA-encryption/Attack-LSBit-Oracle).
 
-In short, for modulus `n=p*q`, exponent `e`, secret plaintext `P` and ciphertext `C`, i.e. `P^e = C (mod n)`, we know `e`, `C` and `n`. Thus we can compute `2^e * C = 2^e * P^e = 2P^e (mod n)`, ask the Oracle (server) to decrypt this and return the parity of `2P`. We know that
+In short, for modulus `n=p*q`, exponent `e`, secret plaintext `P` and ciphertext `C`, i.e. `P^e = C (mod n)`, we know `e`, `C` and `n`. Thus we can compute `2^e * C = 2^e * P^e = 2P^e (mod n)`, ask the Oracle (server) to decrypt this and return the parity of `2P (mod n)`. We know that
 1. `P < n`, otherwise encryption would be lossy due to mod
 2. `n` is odd, it is the product of two big primes
 3. `2P` is even
@@ -28,7 +28,7 @@ Repeating the process, decrypting `2^e * 2^e * C (mod n)` we can get the parity 
 
 The twist in this challenge comes from the fact that a new key is generated for every connection, and we may only request one decrypt per connection. Therefore we must generalise the solution.
 
-Convince yourself that, on step `i+1` above, the LSB oracle gives us the ability to divide the range `[0, n]` evenly into `2^i` sub-ranges and ask whether `P` lies in the lower half or upper half of any of those sub-ranges. Now, since we have a different `n` on each conection, our sub-ranges don't line up nicely with the ranges from the previous step. But that's fine.
+Convince yourself that, on step `i+1` above, the LSB oracle gives us the ability to divide the range `[0, n]` evenly into `2^i` sub-ranges and ask whether `P` lies in the lower half or upper half of any of those sub-ranges. Now, since we have a different `n` on each connection, our sub-ranges don't line up nicely with the ranges from the previous step. But that's fine.
 
 We simply maintain a running lower and upper bound on `P`, called `L` and `U` resp. In each iteration, given an `n`, we compute `i` such that both these bounds lie inside one of the `2^i` even partitions of `[0, n]` and that the halfway point inside this partition lies between `L` and `U`. Then we request the parity of the decryption of `2^((i+1)*e) * c (mod n)`, telling us whether `P` lies above or below the midpoint, and update either our upper or lower bound accordingly. Thus each step we further restrict the range of possible values of `P` by half on average (well maybe not exactly due to how moduli are distributed?). The relevant part of one step in the attack code is shown below.
 
@@ -42,13 +42,31 @@ while not (midpoint > lower_limit and midpoint < upper_limit):
     elif midpoint > upper_limit:
         midpoint -= modulus / factor
 
-# (ask server for parity)
-...
+query = (cipher * pow(factor, e, modulus)) % modulus
+
+# ... ask server to decrypt query and return parity ... #
 
 if odd:
     lower_limit = int(midpoint)
 else:
     upper_limit = int(midpoint)
+
+print long_to_bytes(midpoint)
 ```
 
-The flag was padded at the start and end to make the search a bit more interesting, but the end-padding in particular actually helped because deducing the final few bits of the plaintext would have required much more careful handling of bounds than I employed. The exploit script prints a value within the range of possiblities as bytes every step, so we can see when enough of the flag has emerged to finish.
+The flag was padded at the start and end to make the search a bit more interesting, but the end-padding in particular actually helped because deducing the final few bits of the plaintext would have required much more careful handling of bounds than I used. The exploit script prints a value within the range of possiblities as bytes every step, so we can see when enough of the flag has emerged to finish (leaving about 145 bits of uninteresting plaintext unrecovered)
+
+```
+Remaining bits: 147
+flag: inctf{w0w_$0_coOl_LSbit_|3r0\x81\xb7\x9fJzZ�D\x942\x0f\x12sK�5s\x96
+Remaining bits: 146
+flag: inctf{w0w_$0_coOl_LSbit_|3r0\x7f/\x9b\x06媜\x97\x98#\x7f�c\xb0\�>k\x85
+Remaining bits: 146
+flag: inctf{w0w_$0_coOl_LSbit_|3r0x\x06\x85\xa7\xb0&�5q����k\xa5�:'
+Remaining bits: 145
+flag: inctf{w0w_$0_coOl_LSbit_|3r0{|���\x12\x94\x92\x85�h5�\��D\x11
+Remaining bits: 145
+flag: inctf{w0w_$0_coOl_LSbit_|3r0}+Kڒ)�"��\xa9�����im
+```
+
+The full attack script is waRSAaw.py, and runs pretty quick attacking a local process rather than a busy CTF server.

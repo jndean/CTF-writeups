@@ -28,15 +28,15 @@ while True:
     modulus = int(modulus)
 
     upper_limit = min(upper_limit, modulus)
-    
+
     factor = 2
-    mdpt = modulus / factor
-    while not (mdpt > lower_limit and mdpt < upper_limit):
+    midpoint = modulus / factor
+    while not lower_limit < midpoint < upper_limit:
         factor *= 2
-        if mdpt < lower_limit:
-            mdpt += modulus / factor
-        elif mdpt > upper_limit:
-            mdpt -= modulus / factor
+        if midpoint < lower_limit:
+            midpoint += modulus / factor
+        elif midpoint > upper_limit:
+            midpoint -= modulus / factor
         else:
             raise Error('search fail')
 
@@ -47,14 +47,14 @@ while True:
     result = int(p.recvline()[-2])
 
     if result:  # odd
-        lower_limit = int(mdpt)
+        lower_limit = int(midpoint)
         print('up')
     else:
-        upper_limit = int(mdpt)
+        upper_limit = int(midpoint)
         print('down')
 
     print 'Remaining bits:', int(math.log(upper_limit - lower_limit, 2))
-    print long_to_bytes(mdpt)
+    print long_to_bytes(midpoint)
 
     p.close()
     if upper_limit - lower_limit < 2:

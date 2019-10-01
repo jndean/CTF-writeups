@@ -69,4 +69,4 @@ Remaining bits: 145
 flag: inctf{w0w_$0_coOl_LSbit_|3r0}+Kڒ)�"��\xa9�����im
 ```
 
-The full attack script is waRSAaw.py, and runs pretty quick attacking a local process rather than a busy CTF server.
+The full attack script is waRSAw.py, and runs pretty quick attacking a local process rather than a busy CTF server.

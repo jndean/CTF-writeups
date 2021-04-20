@@ -1,2 +1,2 @@
-pwntools==3.12.2
+pwntools==4.3.1
 pycrypto==2.6.1
